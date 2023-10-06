@@ -14,6 +14,7 @@ TODO:
 - Add to Google Calendar
 - On top of calendar, add as tasks
 - Change data structure for storing messages?
+- Change timezones
 """
 
 API_TOKEN = ""
@@ -67,13 +68,13 @@ def send_reminder_every(chat_id, msg):
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-	bot.reply_to(message, "Hello! Use /remindme <reminder message> to set a reminder! Use /help for more information about the different reminder options!")
+	bot.reply_to(message, "Hello! Use /remindme in/at/on <time> or /remindmeevery <time> to set a reminder! You will then be prompted to enter your reminder message. Use /help for more information about the different reminder options!")
 
 @bot.message_handler(commands=['help'])
 def help_message(message):
 	bot.reply_to(message, 
-	      "/remindme <message>: set a fixed reminder \n" +
-	      "/remindmeevery <message>: set a recurring reminder \n" +
+	      "/remindme <time>: set a fixed reminder \n" +
+	      "/remindmeevery <time>: set a recurring reminder \n" +
 	      "/cancel : cancels the last-defined reminder \n" +
 	      "/clear : cancels all reminders \n" +
 	      "/list : see all scheduled reminders")
