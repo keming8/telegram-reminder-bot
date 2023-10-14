@@ -25,7 +25,10 @@ all_reminders_dict = dict() # Dict of chat IDs to dict of message : reminder tim
 
 jobs = dict() # Dict of jobs for cancelling
 
+timezones = dict() # Dict of user timezones
+
 bot = telebot.TeleBot(API_TOKEN)
+bot.set_webhook()
 """bot.remove_webhook()
 bot.set_webhook(url="")"""
 
@@ -68,17 +71,21 @@ def send_reminder_every(chat_id, msg):
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-	bot.reply_to(message, "Hello! Use /remindme in/at/on <time> or /remindmeevery <time> to set a reminder! You will then be prompted to enter your reminder message. Use /help for more information about the different reminder options!")
+	bot.reply_to(message, "Hello! Use /remindme <time> or /remindmeevery <time> to set a reminder! You will then be prompted to enter your reminder message. Use /help for more information about the different reminder options!")
 
 @bot.message_handler(commands=['help'])
 def help_message(message):
 	bot.reply_to(message, 
 	      "/remindme <time>: set a fixed reminder \n" +
+		  "Examples: /remindme in 5s , /remindme at 10pm, /remindme on 1 Jan \n" + 
 	      "/remindmeevery <time>: set a recurring reminder \n" +
+		  "Examples: /remindmeevery 5s, /remindmeevery Monday, /remindmeevery 5min \n" +
 	      "/cancel : cancels the last-defined reminder \n" +
 	      "/clear : cancels all reminders \n" +
-	      "/list : see all scheduled reminders")
-		  
+	      "/list : see all scheduled reminders \n" + 
+		  "/set_timezone <+/- HH:MM> : set timezone with respect to UTC \n" + 
+		  "Examples: /set_timezone +01:00, /set_timezone -08:00")
+	  
 @bot.message_handler(commands=['list'])
 def list_reminders(message):
 	chatid = message.chat.id
@@ -130,6 +137,18 @@ def cancel(message):
 		bot.reply_to(message, "All scheduled reminders have been cleared. \n \n" + "Use /remindme or /remindmeevery to set a new reminder.")
 	return
 
+@bot.message_handler(commands=['set_timezone'])
+def set_timezone(message):
+	chatid = message.chat.id
+	try:
+		hours = message[0:2]
+		minutes = message[2:4]
+		offset = int(hours) * 3600 + int(minutes) * 60
+		timezones[chatid] = offset
+	except:
+		bot.reply_to(message, "Please enter your timezone offset with respect to UTC. \n \nFor example, for Singapore, use /set_timezone + 08:00 \n \nUsage: /set_timezone <+/- HH:MM")
+	return
+
 @bot.message_handler(commands=['remindme'])
 def remindme_message(message):
 	try:
@@ -155,14 +174,17 @@ def remindme_message(message):
 	
 def remindertime_message(message, remindertime):
 	
+	
 	remindermessage_to_send = message.text
 	chatid = message.chat.id
+	offset = timezones.get(chatid, 0)
+
 	if not(chatid in all_reminders_dict):
 		all_reminders_dict[chatid] = dict()
 	if not(chatid in jobs):
 		jobs[chatid] = []
 	try:
-		message_timestamp = message.date
+		message_timestamp = message.date + offset
 		start = (remindertime.split(" ")[0]).lower()
 		mess = remindertime.split(" ")
 		
@@ -205,7 +227,7 @@ def remindertime_message(message, remindertime):
 			ret_time = dateutil.parser.parse(reminder_time) 
 			#If day specified is a day of the week and not specific date
 			if (day_to_number(reminder_date) != -1):
-				today_day_number = int(datetime.today().weekday())
+				today_day_number = day_to_number(datetime.fromtimestamp(message_timestamp/1000).strftime('%A'))
 				reminder_day_number = day_to_number(reminder_date)
 				if (today_day_number - reminder_day_number == 0):
 					reminder_day_number += 7
@@ -275,7 +297,10 @@ def remindertime_message(message, remindertime):
 
 @bot.message_handler(commands=['remindmeevery'])
 def remindme_message_every(message):
-	message_timestamp = message.date
+
+	chatid = message.chat.id
+	offset = timezones.get(chatid, 0)
+	message_timestamp = message.date + offset
 	mess = message.text.split(" ")
 
 	reminder_until = '6 months' #if until date is not specified, set to 6 months later
