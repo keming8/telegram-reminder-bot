@@ -76,15 +76,17 @@ def start_message(message):
 @bot.message_handler(commands=['help'])
 def help_message(message):
 	bot.reply_to(message, 
-	      "/remindme <time>: set a fixed reminder \n" +
-		  "Examples: /remindme in 5s , /remindme at 10pm, /remindme on 1 Jan \n" + 
-	      "/remindmeevery <time>: set a recurring reminder \n" +
-		  "Examples: /remindmeevery 5s, /remindmeevery Monday, /remindmeevery 5min \n" +
-	      "/cancel : cancels the last-defined reminder \n" +
-	      "/clear : cancels all reminders \n" +
-	      "/list : see all scheduled reminders \n" + 
-		  "/set_timezone <+/- HH:MM> : set timezone with respect to UTC \n" + 
-		  "Examples: /set_timezone +01:00, /set_timezone -08:00")
+	      "/remindme <time>: set a fixed reminder \n\n" +
+	      "Examples: /remindme in 5s , /remindme at 10pm, /remindme on 1 Jan \n\n\n" + 
+	      "/remindmeevery <time>: set a recurring reminder \n\n" +
+	      "Examples: /remindmeevery 5s, /remindmeevery Monday, /remindmeevery 5min \n\n\n" +
+	      "/cancel : cancels the last-defined reminder \n\n\n" +
+	      "/clear : cancels all reminders \n\n\n" +
+	      "/list : see all scheduled reminders \n\n\n" + 
+	      "/set_timezone <+/- HH:MM> : set timezone with respect to UTC \n\n" + 
+	      "Examples: /set_timezone +01:00, /set_timezone -08:00 \n\n\n" +
+	      "/check_timezone : Check timezone that has been set \n\n\n" +
+              "/help : List of all commands")
 	  
 @bot.message_handler(commands=['list'])
 def list_reminders(message):
@@ -148,6 +150,11 @@ def set_timezone(message):
 	except:
 		bot.reply_to(message, "Please enter your timezone offset with respect to UTC. \n \nFor example, for Singapore, use /set_timezone + 08:00 \n \nUsage: /set_timezone <+/- HH:MM")
 	return
+
+@bot.message_handler(commands=['check_timezone'])
+def check_timezone(message):
+	chat_id = message.chat.id
+	bot.reply_to(message, "Your current timezone set is UTC+" + timezones.get(chat_id, 0) +". You may use /set_timezone to change your timezone.")
 
 @bot.message_handler(commands=['remindme'])
 def remindme_message(message):
