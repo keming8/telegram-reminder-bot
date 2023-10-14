@@ -14,7 +14,7 @@ TODO:
 - Add to Google Calendar
 - On top of calendar, add as tasks
 - Change data structure for storing messages?
-- Change timezones
+- Change timezones (DONE)
 """
 
 API_TOKEN = ""
@@ -143,18 +143,33 @@ def cancel(message):
 def set_timezone(message):
 	chatid = message.chat.id
 	try:
-		hours = message[0:2]
-		minutes = message[2:4]
-		offset = int(hours) * 3600 + int(minutes) * 60
+		mess = message.text.split(" ")[1:]
+		sign = mess[0]
+		hours = mess[1][0:2]
+		minutes = mess[1][3:5]
+		if sign == '+':
+            		offset = int(hours) * 3600 + int(minutes) * 60
+		else:
+            		offset = -(int(hours) * 3600 + int(minutes) * 60)
 		timezones[chatid] = offset
+		bot.reply_to(message, "Your timezone has been changed to UTC" + sign + str(hours).zfill(2) + ":" + str(minutes).zfill(2) + ".")
 	except:
-		bot.reply_to(message, "Please enter your timezone offset with respect to UTC. \n \nFor example, for Singapore, use /set_timezone + 08:00 \n \nUsage: /set_timezone <+/- HH:MM")
+		bot.reply_to(message, "Please enter your timezone offset with respect to UTC. \n \nFor example, for Singapore, use /set_timezone + 08:00 \n \nUsage: /set_timezone <+/- HH:MM>")
 	return
+
 
 @bot.message_handler(commands=['check_timezone'])
 def check_timezone(message):
 	chat_id = message.chat.id
-	bot.reply_to(message, "Your current timezone set is UTC+" + timezones.get(chat_id, 0) +". You may use /set_timezone to change your timezone.")
+	offset = timezones.get(chat_id, 0)
+	hours = offset // 3600
+	minutes = offset % 60
+	if offset < 0:
+            		sign = '-'
+	else:
+            		sign = '+'
+	bot.reply_to(message, "Your current timezone set is UTC" + sign + str(hours).zfill(2) + ':'  + str(minutes).zfill(2) + ". You may use /set_timezone to change your timezone.")
+
 
 @bot.message_handler(commands=['remindme'])
 def remindme_message(message):
