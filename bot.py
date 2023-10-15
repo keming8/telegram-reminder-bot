@@ -168,7 +168,7 @@ def get_timezone(message):
 		sign = '+'
 	else:
 		sign = '-'
-	bot.reply_to(message, "Your current timezone set is UTC" + sign + str(hours).zfill(2) + ':'  + str(minutes).zfill(2) + ". You may use /set_timezone +/- >HH:MM> to change your timezone.")
+	bot.reply_to(message, "Your current timezone set is UTC" + sign + str(hours).zfill(2) + ':'  + str(minutes).zfill(2) + ". You may use /set_timezone +/- <HH:MM> to change your timezone.")
 
 
 @bot.message_handler(commands=['remindme'])
