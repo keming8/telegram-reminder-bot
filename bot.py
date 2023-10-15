@@ -1,5 +1,5 @@
-import telebot, datetime, time, schedule, dateutil.parser, threading
-from datetime import datetime, timedelta
+import telebot, time, schedule, dateutil.parser, threading
+from datetime import datetime, timedelta, timezone
 from flask import Flask,request
 
 
@@ -14,7 +14,7 @@ TODO:
 - Add to Google Calendar
 - On top of calendar, add as tasks
 - Change data structure for storing messages?
-- Change timezones (DONE)
+- Change timezone (DONE)
 """
 
 API_TOKEN = ""
@@ -85,7 +85,7 @@ def help_message(message):
 	      "/list : see all scheduled reminders \n\n\n" + 
 	      "/set_timezone <+/- HH:MM> : set timezone with respect to UTC \n\n" + 
 	      "Examples: /set_timezone +01:00, /set_timezone -08:00 \n\n\n" +
-	      "/check_timezone : Check timezone that has been set \n\n\n" +
+	      "/get_timezone : Check timezone that has been set \n\n\n" +
               "/help : List of all commands")
 	  
 @bot.message_handler(commands=['list'])
@@ -148,27 +148,27 @@ def set_timezone(message):
 		hours = mess[1][0:2]
 		minutes = mess[1][3:5]
 		if sign == '+':
-            		offset = int(hours) * 3600 + int(minutes) * 60
+			offset = int(hours) * 3600 + int(minutes) * 60
 		else:
-            		offset = -(int(hours) * 3600 + int(minutes) * 60)
-		timezones[chatid] = offset
+			offset = -(int(hours) * 3600 + int(minutes) * 60)
+		timezones[chatid] = offset + (datetime.now().hour -datetime.now(timezone.utc).hour)*3600
 		bot.reply_to(message, "Your timezone has been changed to UTC" + sign + str(hours).zfill(2) + ":" + str(minutes).zfill(2) + ".")
 	except:
 		bot.reply_to(message, "Please enter your timezone offset with respect to UTC. \n \nFor example, for Singapore, use /set_timezone + 08:00 \n \nUsage: /set_timezone <+/- HH:MM>")
 	return
 
 
-@bot.message_handler(commands=['check_timezone'])
-def check_timezone(message):
+@bot.message_handler(commands=['get_timezone'])
+def get_timezone(message):
 	chat_id = message.chat.id
-	offset = timezones.get(chat_id, 0)
-	hours = offset // 3600
+	offset = timezones.get(chat_id, (datetime.now().hour - datetime.now(timezone.utc).hour)*3600) 
+	hours = abs(offset) // 3600
 	minutes = offset % 60
-	if offset < 0:
-            		sign = '-'
+	if offset >= 0:
+		sign = '+'
 	else:
-            		sign = '+'
-	bot.reply_to(message, "Your current timezone set is UTC" + sign + str(hours).zfill(2) + ':'  + str(minutes).zfill(2) + ". You may use /set_timezone to change your timezone.")
+		sign = '-'
+	bot.reply_to(message, "Your current timezone set is UTC" + sign + str(hours).zfill(2) + ':'  + str(minutes).zfill(2) + ". You may use /set_timezone +/- >HH:MM> to change your timezone.")
 
 
 @bot.message_handler(commands=['remindme'])
@@ -199,14 +199,14 @@ def remindertime_message(message, remindertime):
 	
 	remindermessage_to_send = message.text
 	chatid = message.chat.id
-	offset = timezones.get(chatid, 0)
+	offset = timezones.get(chatid, (datetime.now().hour - datetime.now(timezone.utc).hour)*3600)
 
 	if not(chatid in all_reminders_dict):
 		all_reminders_dict[chatid] = dict()
 	if not(chatid in jobs):
 		jobs[chatid] = []
 	try:
-		message_timestamp = message.date + offset
+		message_timestamp = message.date + offset - (datetime.now().hour - datetime.now(timezone.utc).hour)*3600
 		start = (remindertime.split(" ")[0]).lower()
 		mess = remindertime.split(" ")
 		
@@ -218,7 +218,7 @@ def remindertime_message(message, remindertime):
 				
 			except:
 				bot.reply_to(message, "Invalid date, please try again.")
-				bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
+				#bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
 				return
 			
 			ret_timestamp = time.mktime(ret_datetime.timetuple())
@@ -228,6 +228,7 @@ def remindertime_message(message, remindertime):
 				ret_timestamp = time.mktime(ret_datetime.timetuple())
 
 			ret_datetime = datetime.fromtimestamp(ret_timestamp)
+
 
 			jobs[chatid].append(schedule.every(ret_timestamp - message_timestamp).seconds.do(send_reminder, chat_id = chatid, msg = remindermessage_to_send))
 
@@ -261,7 +262,7 @@ def remindertime_message(message, remindertime):
 					ret_date = dateutil.parser.parse(reminder_date, dayfirst=True) 
 				except:
 					bot.reply_to(message, "Invalid date, please try again.")
-					bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
+					#bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
 					return
 				
 			ret_datetime = datetime.combine(ret_date, ret_time.time())
@@ -313,7 +314,7 @@ def remindertime_message(message, remindertime):
 			bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)"""
 	except:
 		bot.reply_to(message, "Please try again.")
-		bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
+		#bot.register_next_step_handler(message, remindertime_message, remindermessage_to_send)
 		
 	return
 
@@ -321,8 +322,8 @@ def remindertime_message(message, remindertime):
 def remindme_message_every(message):
 
 	chatid = message.chat.id
-	offset = timezones.get(chatid, 0)
-	message_timestamp = message.date + offset
+	offset = timezones.get(chatid, (datetime.now().hour -datetime.now(timezone.utc).hour)*3600)
+	message_timestamp = message.date + offset - (datetime.now().hour -datetime.now(timezone.utc).hour)*3600
 	mess = message.text.split(" ")
 
 	reminder_until = '6 months' #if until date is not specified, set to 6 months later
@@ -429,7 +430,7 @@ def remindertime_message_every(message, reminder_date, reminder_time, reminder_u
 			#current_reminders[mess] = 'Every ' + amt_str + ' weeks at ' + reminder_time + ' until ' + reminder_until_str
 		else:
 			bot.reply_to(message, "Invalid date, please try again.")
-			bot.register_next_step_handler(message, remindertime_message_every, reminder_date = reminder_date, reminder_time = reminder_time, reminder_until = reminder_until, reminder_until_str = reminder_until_str)
+			#bot.register_next_step_handler(message, remindertime_message_every, reminder_date = reminder_date, reminder_time = reminder_time, reminder_until = reminder_until, reminder_until_str = reminder_until_str)
 			return
 		
 	send_confirmation(message, mess, 'Every ' + reminder_date + ' until ' + reminder_until_str)
